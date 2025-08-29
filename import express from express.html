@@ -1,0 +1,92 @@
+import express from "express";
+import cors from "cors";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Dummy mechanics data
+let mechanics = [
+  { id: 1, name: "QuickFix Garage", phone: "+919812345678", lat: 17.385, lon: 78.486, services: ["tyre","battery"] },
+  { id: 2, name: "Highway Assist Kumar", phone: "+919876543210", lat: 17.40, lon: 78.49, services: ["engine","towing"] }
+];
+
+let requests = [];
+
+// GET all mechanics
+app.get("/mechanics", (req, res) => {
+  res.json(mechanics);
+});
+
+// POST a new mechanic
+app.post("/mechanics", (req, res) => {
+  const mech = { id: Date.now(), ...req.body };
+  mechanics.push(mech);
+  res.status(201).json(mech);
+});
+
+// POST request for help
+app.post("/requests", (req, res) => {
+  const reqObj = { id: Date.now(), ...req.body };
+  requests.push(reqObj);
+  // Filter mechanics by requested service
+  const matched = mechanics.filter(m => m.services.includes(req.body.serviceType));
+  res.json({ request: reqObj, nearby: matched });
+});
+
+app.get("/", (_req, res) => res.send("MechNear API running"));
+
+app.listen(4000, () => console.log("API running at http://localhost:4000"));
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+const API = "http://localhost:4000";
+
+export default function App() {
+  const [mechanics, setMechanics] = useState([]);
+  const [serviceType, setServiceType] = useState("tyre");
+  const [results, setResults] = useState(null);
+
+  useEffect(() => {
+    axios.get(${API}/mechanics).then(r => setMechanics(r.data));
+  }, []);
+
+  const requestHelp = async () => {
+    const r = await axios.post(${API}/requests, { serviceType });
+    setResults(r.data);
+  };
+
+  return (
+    <div style={{ maxWidth: 700, margin: "2rem auto", fontFamily: "sans-serif" }}>
+      <h1>🚘 MechNear App</h1>
+      <h3>Available Mechanics</h3>
+      <ul>
+        {mechanics.map(m => (
+          <li key={m.id}>
+            {m.name} — {m.phone} — Services: {m.services.join(", ")}
+          </li>
+        ))}
+      </ul>
+
+      <h3>Request Help</h3>
+      <select value={serviceType} onChange={e => setServiceType(e.target.value)}>
+        <option value="tyre">Tyre</option>
+        <option value="battery">Battery</option>
+        <option value="engine">Engine</option>
+        <option value="towing">Towing</option>
+      </select>
+      <button onClick={requestHelp} style={{ marginLeft: 8 }}>Request</button>
+
+      {results && (
+        <div style={{ marginTop: 20 }}>
+          <h4>Request #{results.request.id}</h4>
+          <p>Nearby mechanics for {results.request.serviceType}:</p>
+          <ul>
+            {results.nearby.map(m => <li key={m.id}>{m.name} — {m.phone}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
